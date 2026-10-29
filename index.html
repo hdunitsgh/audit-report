@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clinical Quality Audit Report & Dashboard</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; background-color: #f8f9fa; color: #212529; }
+    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .header { text-align: center; margin-bottom: 25px; }
+    .header img { width: 120px; height: auto; margin-bottom: 10px; border-radius: 50%; }
+    h1 { color: #007bff; font-size: 1.8em; margin-bottom: 5px; margin-top: 0; }
+    h2 { color: #6c757d; font-size: 1.1em; font-weight: normal; margin-top: 0; }
+    h3 { margin-top: 25px; color: #343a40; border-bottom: 2px solid #007bff; padding-bottom: 5px; font-size: 1.2em; }
+    label { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: bold; }
+    select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+    /* Dashboard Metric Cards */
+    .metric-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 14px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .metric-val { font-size: 1.8em; font-weight: bold; color: #007bff; margin: 5px 0; }
+    .metric-lbl { font-size: 0.85em; color: #6c757d; font-weight: bold; text-transform: uppercase; }
+
+    /* Standard Item Card */
+    .item-card { background: #fdfdfd; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 15px; }
+    .item-card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px; font-weight: bold; color: #007bff; }
+
+    /* Buttons */
+    .btn-action { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-action:hover { background-color: #0056b3; }
+    .btn-submit { background-color: #28a745; color: white; padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 1em; font-weight: bold; }
+    .btn-submit:hover { background-color: #218838; }
+
+    /* Tables */
+    .report-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 15px; }
+    .report-table th, .report-table td { border: 1px solid #dee2e6; padding: 8px 10px; }
+    .report-table th { background-color: #f1f4f8; color: #007bff; text-align: left; font-weight: bold; }
+
+    .matrix-wrapper { overflow-x: auto; margin-top: 10px; }
+    .matrix-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .matrix-table th, .matrix-table td { border: 1px solid #ced4da; padding: 5px 6px; text-align: center; }
+    .matrix-table th.col-txt, .matrix-table td.col-txt { text-align: left; min-width: 180px; }
+    .matrix-table tr.cat-tr td { background: #e9ecef; font-weight: bold; text-align: left; }
+
+    /* Progress bar in table */
+    .prog-track { background: #e2e8f0; border-radius: 4px; height: 8px; overflow: hidden; width: 100%; margin-top: 4px; }
+    .prog-fill { background: #007bff; height: 100%; }
+
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+    .badge-pass { background: #d4edda; color: #155724; }
+    .badge-warn { background: #fff3cd; color: #856404; }
+    .badge-fail { background: #f8d7da; color: #721c24; }
+
+    .callout { padding: 12px 15px; border-radius: 4px; margin-bottom: 15px; font-size: 13.5px; line-height: 1.4; }
+    .callout-concern { background-color: #fff5f5; border-left: 4px solid #dc3545; color: #721c24; }
+    .callout-improve { background-color: #f0fff4; border-left: 4px solid #28a745; color: #155724; }
+
+    .sign-area { display: flex; justify-content: space-between; margin-top: 40px; }
+    .sign-col { width: 42%; border-top: 1px solid #000; text-align: center; padding-top: 6px; font-size: 13px; font-weight: bold; }
+
+    #message-area { margin-top: 20px; padding: 12px; border-radius: 4px; text-align: center; display: none; font-weight: bold; }
+    .error { background-color: #ffe6e6; color: red; border: 1px solid red; }
+
+    .footer { margin-top: 40px; padding-top: 15px; border-top: 1px solid #ced4da; font-size: 0.8em; color: #6c757d; text-align: center; }
+
+    @media (max-width: 768px) {
+      .grid-4 { grid-template-columns: 1fr 1fr; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    /* Print Engine: Hides Dashboard & Selectors, Prints Clean A4 Formal Report */
+    @media print {
+      body { background: white !important; margin: 0; padding: 0; }
+      .container { box-shadow: none; max-width: 100%; padding: 10px 15px; border-radius: 0; }
+      .no-print, .footer, #dashboardSection { display: none !important; }
+      .item-card, .report-table, .callout, .matrix-wrapper, .sign-area { page-break-inside: avoid; }
+      .page-break { page-break-before: always; }
+      .matrix-table th, .matrix-table td { border: 1px solid #000 !important; font-size: 8pt; padding: 3px 4px; }
+      .report-table th, .report-table td { border: 1px solid #000 !important; font-size: 9pt; }
+      .sign-col { border-top: 1px solid #000 !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Standard Header -->
+  <div class="header">
+    <img src="https://lh3.googleusercontent.com/d/1tCDAMimy_b0x9kRmWNyYMn4voR9Ynr0J" alt="Logo">
+    <h1>Clinical Quality Audit Report</h1>
+    <h2>Haemodialysis Unit, Sarawak General Hospital</h2>
+  </div>
+
+  <!-- ================= 1. EXECUTIVE MINI DASHBOARD (NO-PRINT) ================= -->
+  <div id="dashboardSection" class="no-print" style="margin-bottom: 25px;">
+    <h3>
+      <span>Executive Surveillance Dashboard</span>
+      <span style="font-size: 0.7em; color: #6c757d; font-weight: normal;">Unit Live Overview</span>
+    </h3>
+
+    <!-- 4 KPI Metrics -->
+    <div class="grid-4">
+      <div class="metric-card">
+        <div class="metric-lbl">Ongoing Audits</div>
+        <div class="metric-val" id="dashActiveCount" style="color: #ffc107;">-</div>
+        <small style="color: #6c757d;">In-Progress Runs</small>
+      </div>
+      <div class="metric-card">
+        <div class="metric-lbl">Finalized Audits</div>
+        <div class="metric-val" id="dashCompletedCount" style="color: #28a745;">-</div>
+        <small style="color: #6c757d;">Locked & Ready</small>
+      </div>
+      <div class="metric-card">
+        <div class="metric-lbl">Unit Compliance</div>
+        <div class="metric-val" id="dashAvgCompliance">-</div>
+        <small style="color: #6c757d;">Overall Rate</small>
+      </div>
+      <div class="metric-card">
+        <div class="metric-lbl">Total Samples</div>
+        <div class="metric-val" id="dashTotalSamples">-</div>
+        <small style="color: #6c757d;">Logs</small>
+      </div>
+    </div>
+
+    <!-- Ongoing Audits Live Status Table -->
+    <div id="ongoingAuditsTracker" style="margin-top: 15px;">
+      <label style="margin-top: 10px;">Ongoing Audits Surveillance Tracker</label>
+      <table class="report-table" style="margin-bottom: 5px;">
+        <thead>
+          <tr>
+            <th style="width: 35%;">Audit Title</th>
+            <th style="width: 25%;">Ward / Unit</th>
+            <th style="width: 15%;">Period</th>
+            <th style="width: 25%;">Progress (Samples)</th>
+          </tr>
+        </thead>
+        <tbody id="dashOngoingTbody">
+          <tr><td colspan="4" style="text-align: center; color: #6c757d;">Loading active audits...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ================= 2. SESSION SELECTION BAR ================= -->
+  <div class="item-card no-print">
+    <div class="item-card-header">
+      <span>Generate Detailed Audit Report</span>
+    </div>
+    <label for="selectSession" style="margin-top: 0;">Select Audit Session to Review</label>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <select id="selectSession" style="flex: 3; margin-bottom: 0;">
+        <option value="">-- Choose Completed / Active Session --</option>
+      </select>
+      <button type="button" class="btn-action" id="btnGenReport" style="white-space: nowrap;" onclick="generateReport()">📊 Generate Report</button>
+      <button type="button" class="btn-submit" id="btnPrint" style="display: none; white-space: nowrap;" onclick="window.print()">🖨️ Print as PDF</button>
+    </div>
+  </div>
+
+  <div id="message-area"></div>
+
+  <!-- ================= 3. DETAILED REPORT CONTAINER ================= -->
+  <div id="reportContainer" style="display: none;">
+    
+    <!-- Metadata Card -->
+    <div class="item-card">
+      <div class="item-card-header">
+        <span id="repAuditTitle">AUDIT REPORT</span>
+        <span class="badge" id="repStatusBadge">LOCKED</span>
+      </div>
+      <div class="grid-2">
+        <div><label>Ward / Unit:</label><span id="repWard">-</span></div>
+        <div><label>Date of Audit:</label><span id="repDate">-</span></div>
+      </div>
+      <div class="grid-2" style="margin-top: 8px;">
+        <div><label>Audit Period / Cycle:</label><span id="repPeriod">-</span></div>
+        <div><label>Session Reference:</label><span id="repSessionId" style="font-family: monospace;">-</span></div>
+      </div>
+      <div class="grid-2" style="margin-top: 8px;">
+        <div><label>Sample Completion:</label><span id="repSamples">-</span></div>
+        <div><label>Compliance Result vs Target:</label><b id="repOverallScore" style="color: #007bff; font-size: 1.1em;">-</b></div>
+      </div>
+    </div>
+
+    <!-- 1.0 Findings & Summary Table -->
+    <h3>1.0 Clinical Performance & Procedure Findings</h3>
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th style="width: 45%;">Audit Indicator / Procedure Phase</th>
+          <th style="width: 15%; text-align: center;">Target %</th>
+          <th style="width: 15%; text-align: center;">Result %</th>
+          <th style="width: 25%; text-align: center;">Compliance Status</th>
+        </tr>
+      </thead>
+      <tbody id="repSummaryTbody"></tbody>
+      <tfoot>
+        <tr style="font-weight: bold; background: #fafafa;">
+          <td>OVERALL SCORE</td>
+          <td style="text-align: center;" id="footTargetPct">90.0%</td>
+          <td style="text-align: center;" id="footOverallScore">0.0%</td>
+          <td style="text-align: center;" id="footOverallBadge"></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <!-- 2.0 Areas of Concern -->
+    <h3>2.0 Areas of Concern (Non-Compliances & Clinical Risks)</h3>
+    <div class="callout callout-concern" id="repConcernText">None documented.</div>
+
+    <!-- 3.0 Areas of Improvement -->
+    <h3>3.0 Areas of Improvement & Corrective Action Plan (CAPA)</h3>
+    <div class="callout callout-improve" id="repImproveText">None documented.</div>
+
+    <!-- Page Break for Clean Multi-page Print -->
+    <div class="page-break"></div>
+
+    <!-- 4.0 Bedside Observation Matrix (S1 to Sn) -->
+    <h3>4.0 Bedside Observation Matrix (Samples S1 to Sn)</h3>
+    <div class="matrix-wrapper">
+      <table class="matrix-table" id="repMatrixTable"></table>
+    </div>
+
+    <!-- Signature Sign-off Block -->
+    <div class="sign-area">
+      <div class="sign-col">
+        Auditor Signature & Stamp<br><br><br>
+        ( ___________________________________ )
+      </div>
+      <div class="sign-col">
+        Head of Department<br><br><br>
+        ( ___________________________________ )
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Standard Footer -->
+  <div class="footer">
+    &copy; Designed and developed by PPP Zulfadlie bin Janie<br>
+    for Haemodialysis Unit, Sarawak General Hospital
+  </div>
+</div>
+
+<script>
+  const SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx_YnzwVZI-7i1uuGw4NlWd_caAECT5qyfvlu8Yh7UhFCqvonaWNdLIkf3wdVV5quJT/exec";
+
+  window.onload = function() {
+    loadDashboardMetrics();
+    loadSessionsDropdown();
+  };
+
+  // 1. Fetch Mini Dashboard Metrics & Ongoing Audits
+  function loadDashboardMetrics() {
+    fetch(SCRIPT_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "getDashboardOverview" })
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.success) {
+        const s = res.stats;
+        document.getElementById('dashActiveCount').textContent = s.activeCount;
+        document.getElementById('dashCompletedCount').textContent = s.completedCount;
+        document.getElementById('dashAvgCompliance').textContent = s.avgCompliance + "%";
+        document.getElementById('dashTotalSamples').textContent = s.totalSamplesLogged;
+
+        // Render Ongoing Audits Tracker
+        const tbody = document.getElementById('dashOngoingTbody');
+        tbody.innerHTML = "";
+
+        if (res.ongoingList && res.ongoingList.length > 0) {
+          res.ongoingList.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><b>${item.auditTitle}</b></td>
+              <td>${item.wardUnit}</td>
+              <td>${item.auditPeriod}</td>
+              <td>
+                <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
+                  <span>${item.completedSamples} / ${item.targetSamples} Samples</span>
+                  <b>${item.pctProgress}%</b>
+                </div>
+                <div class="prog-track">
+                  <div class="prog-fill" style="width: ${item.pctProgress}%;"></div>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #6c757d; font-style: italic;">No audits currently in progress. All sessions finalized or idle.</td></tr>`;
+        }
+      }
+    })
+    .catch(err => console.error("Dashboard metric fetch error:", err));
+  }
+
+  // 2. Fetch Sessions Dropdown
+  function loadSessionsDropdown() {
+    fetch(SCRIPT_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "getActiveSessions", payload: {} })
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.success) {
+        const sel = document.getElementById('selectSession');
+        sel.innerHTML = '<option value="">-- Choose Completed / Active Session --</option>';
+        
+        let count = 0;
+        res.sessions.forEach(s => {
+          if (s.sessionId) {
+            count++;
+            const opt = document.createElement('option');
+            opt.value = s.sessionId;
+            opt.textContent = `[${s.status}] ${s.auditTitle} - ${s.wardUnit} (${s.auditPeriod})`;
+            sel.appendChild(opt);
+          }
+        });
+
+        if (count === 0) {
+          sel.innerHTML = '<option value="">-- No Audit Sessions Found --</option>';
+        }
+      }
+    })
+    .catch(err => showMessage("Failed to load sessions: " + err, "error"));
+  }
+
+  // 3. Generate Report
+  function generateReport() {
+    const sessionId = document.getElementById('selectSession').value;
+    if (!sessionId) {
+      alert("Please choose an audit session from the dropdown.");
+      return;
+    }
+
+    const genBtn = document.getElementById('btnGenReport');
+    genBtn.disabled = true;
+    genBtn.textContent = "Loading Report...";
+
+    showMessage("Retrieving session details and bedside matrix...", "normal");
+
+    fetch(SCRIPT_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "getAuditReport", payload: { sessionId } })
+    })
+    .then(res => res.json())
+    .then(res => {
+      genBtn.disabled = false;
+      genBtn.textContent = "📊 Generate Report";
+      hideMessage();
+
+      if (!res.success) {
+        showMessage("Failed to generate report: " + res.error, "error");
+        return;
+      }
+
+      const meta = res.sessionMeta;
+      const sum = res.summary;
+      const questions = res.questions;
+      const samples = res.samples;
+      const targetPct = parseFloat(sum.targetCompliance) || 90.0;
+
+      // Header Meta
+      document.getElementById('repAuditTitle').textContent = (meta.auditTitle || "CLINICAL AUDIT").toUpperCase();
+      document.getElementById('repWard').textContent = meta.wardUnit;
+      document.getElementById('repDate').textContent = meta.createdDate || "2026";
+      document.getElementById('repPeriod').textContent = meta.auditPeriod;
+      document.getElementById('repSessionId').textContent = meta.sessionId;
+      document.getElementById('repSamples').textContent = `${meta.completedSamples} / ${meta.targetSamples} Samples Recorded`;
+      document.getElementById('repOverallScore').textContent = `${sum.compliancePercentage}% (Target: ${targetPct}%)`;
+
+      const statusBadge = document.getElementById('repStatusBadge');
+      statusBadge.textContent = meta.status.toUpperCase();
+      statusBadge.className = `badge ${meta.status === 'Locked' ? 'badge-pass' : 'badge-warn'}`;
+
+      // Qualitative synthesis
+      document.getElementById('repConcernText').textContent = meta.areasOfConcern || "None recorded.";
+      document.getElementById('repImproveText').textContent = meta.areasOfImprovement || "None recorded.";
+
+      // Summary Table Rollups
+      renderSummaryTable(questions, samples, sum.compliancePercentage, targetPct);
+
+      // Raw Bedside Matrix Grid
+      renderMatrixGrid(questions, samples);
+
+      document.getElementById('reportContainer').style.display = "block";
+      document.getElementById('btnPrint').style.display = "inline-block";
+    })
+    .catch(err => {
+      genBtn.disabled = false;
+      genBtn.textContent = "📊 Generate Report";
+      showMessage("Connection error: " + err, "error");
+    });
+  }
+
+  function renderSummaryTable(questions, samples, overallPct, targetPct) {
+    const catMap = {};
+    questions.forEach(q => {
+      const c = q.category || "General";
+      if (!catMap[c]) catMap[c] = { earned: 0, max: 0 };
+    });
+
+    samples.forEach(s => {
+      questions.forEach(q => {
+        const c = q.category || "General";
+        const val = s.scores[q.itemNo];
+        if (val !== undefined && val !== "N/A") {
+          catMap[c].earned += parseFloat(val) || 0;
+          catMap[c].max += parseFloat(q.maxScore) || 1;
+        }
+      });
+    });
+
+    const tbody = document.getElementById('repSummaryTbody');
+    tbody.innerHTML = "";
+
+    Object.keys(catMap).forEach(cat => {
+      const c = catMap[cat];
+      const pct = c.max > 0 ? ((c.earned / c.max) * 100).toFixed(1) : "0.0";
+      const num = parseFloat(pct);
+
+      let badgeHtml = "";
+      if (num >= targetPct) {
+        badgeHtml = '<span class="badge badge-pass">Above Target</span>';
+      } else if (num >= (targetPct - 10)) {
+        badgeHtml = '<span class="badge badge-warn">Below Target</span>';
+      } else {
+        badgeHtml = '<span class="badge badge-fail">Critical Action</span>';
+      }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><b>${cat}</b></td>
+        <td style="text-align: center;">${targetPct.toFixed(1)}%</td>
+        <td style="text-align: center;">${pct}%</td>
+        <td style="text-align: center;">${badgeHtml}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('footTargetPct').textContent = `${targetPct.toFixed(1)}%`;
+    document.getElementById('footOverallScore').textContent = `${overallPct}%`;
+    
+    const numOver = parseFloat(overallPct);
+    const footBadge = document.getElementById('footOverallBadge');
+    if (numOver >= targetPct) {
+      footBadge.innerHTML = '<span class="badge badge-pass">Compliant</span>';
+    } else if (numOver >= (targetPct - 10)) {
+      footBadge.innerHTML = '<span class="badge badge-warn">Needs Improvement</span>';
+    } else {
+      footBadge.innerHTML = '<span class="badge badge-fail">Non-Compliant</span>';
+    }
+  }
+
+  function renderMatrixGrid(questions, samples) {
+    const table = document.getElementById('repMatrixTable');
+    const sCount = samples.length;
+
+    let html = `
+      <thead>
+        <tr>
+          <th style="width: 25px;">No</th>
+          <th class="col-txt">Criteria / Indicator</th>
+          <th style="width: 30px;">Max</th>
+          ${samples.map(s => `<th style="width: 25px;">S${s.sampleNo}</th>`).join('')}
+          <th style="width: 35px;">%</th>
+        </tr>
+      </thead>
+      <tbody>
+    `;
+
+    let activeCat = "";
+    let itemIdx = 1;
+
+    questions.forEach(q => {
+      if (q.category !== activeCat) {
+        activeCat = q.category;
+        html += `<tr class="cat-tr"><td colspan="${sCount + 4}">${activeCat}</td></tr>`;
+      }
+
+      let rEarned = 0, rMax = 0;
+      const cells = samples.map(s => {
+        const val = s.scores[q.itemNo];
+        if (val !== undefined && val !== "N/A") {
+          rEarned += parseFloat(val) || 0;
+          rMax += parseFloat(q.maxScore) || 1;
+          return `<td>${val}</td>`;
+        }
+        return `<td>-</td>`;
+      }).join('');
+
+      const pct = rMax > 0 ? ((rEarned / rMax) * 100).toFixed(0) : "0";
+
+      html += `
+        <tr>
+          <td>${itemIdx++}</td>
+          <td class="col-txt">${q.questionText}</td>
+          <td>${q.maxScore}</td>
+          ${cells}
+          <td><b>${pct}%</b></td>
+        </tr>
+      `;
+    });
+
+    const totCells = samples.map(s => `<td><b>${s.earnedPoints}</b></td>`).join('');
+    html += `
+      <tr style="font-weight: bold; background: #fafafa;">
+        <td colspan="2" style="text-align: right;">TOTAL POINTS:</td>
+        <td></td>
+        ${totCells}
+        <td></td>
+      </tr>
+      </tbody>
+    `;
+
+    table.innerHTML = html;
+  }
+
+  function showMessage(text, type) {
+    const msg = document.getElementById('message-area');
+    msg.style.display = "block";
+    msg.textContent = text;
+    msg.className = type === "error" ? "error" : "success";
+    if (type === "normal") {
+      msg.style.backgroundColor = "#e2e3e5";
+      msg.style.color = "#383d41";
+      msg.style.border = "1px solid #d6d8db";
+    }
+  }
+
+  function hideMessage() {
+    document.getElementById('message-area').style.display = "none";
+  }
+</script>
+
+</body>
+</html>
